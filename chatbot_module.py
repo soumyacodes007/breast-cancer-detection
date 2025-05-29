@@ -7,7 +7,7 @@ import google.generativeai as genai
 # --- Constants ---
 # Using a generally available and capable model.
 # Options: 'gemini-1.0-pro', 'gemini-1.5-flash-latest', 'gemini-1.5-pro-latest'
-GEMINI_MODEL_NAME = 'gemini-1.5-flash-latest'
+GEMINI_MODEL_NAME = 'gemini-2.0-flash'
 
 class BreastCancerChatbot:
     def __init__(self):
@@ -15,7 +15,7 @@ class BreastCancerChatbot:
         try:
             api_key = st.secrets.get("GEMINI_API_KEY")
             if not api_key:
-                st.error("GEMINI_API_KEY not found chck env file.")
+                st.error("GEMINI_API_KEY not found in st.secrets. Please add it to your .streamlit/secrets.toml file.")
                 return
             genai.configure(api_key=api_key)
             self.model = genai.GenerativeModel(GEMINI_MODEL_NAME)

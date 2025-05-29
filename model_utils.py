@@ -1,21 +1,18 @@
-# model_utils.py
+# model_utils.py (Corrected and defensively returning 5 items)
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.datasets import load_breast_cancer # To get feature names easily
-import streamlit as st # For caching
+from sklearn.datasets import load_breast_cancer
+import streamlit as st
 
-# --- Constants ---
 MODEL_PATH = 'breast_cancer_rfc_model.joblib'
 SCALER_PATH = 'breast_cancer_scaler.joblib'
 
-@st.cache_resource # Cache the loading of model and scaler
+@st.cache_resource
 def load_model_and_scaler():
-    """Loads the trained model and scaler."""
     try:
         model = joblib.load(MODEL_PATH)
         scaler = joblib.load(SCALER_PATH)
-        print("Model and scaler loaded successfully from model_utils.")
         return model, scaler
     except FileNotFoundError:
         st.error(f"Error: Model or scaler file not found. Ensure '{MODEL_PATH}' and '{SCALER_PATH}' are in the root directory.")
@@ -24,16 +21,14 @@ def load_model_and_scaler():
         st.error(f"Error loading model/scaler: {e}")
         return None, None
 
-@st.cache_data # Cache the feature names as they don't change
+@st.cache_data
 def get_feature_names():
-    """Gets the feature names from the breast cancer dataset."""
     try:
         cancer_data = load_breast_cancer()
         return list(cancer_data.feature_names)
     except Exception as e:
         st.error(f"Error loading feature names: {e}")
-        # Fallback or define manually if needed, but this is less robust
-        return [
+        return [ # Fallback
             'mean radius', 'mean texture', 'mean perimeter', 'mean area',
             'mean smoothness', 'mean compactness', 'mean concavity',
             'mean concave points', 'mean symmetry', 'mean fractal dimension',
@@ -45,26 +40,34 @@ def get_feature_names():
             'worst concave points', 'worst symmetry', 'worst fractal dimension'
         ]
 
-def make_prediction(model, scaler, input_data, feature_names_ordered):
-    """
-    Makes a prediction using the loaded model and scaler.
-    Args:
-        model: The trained machine learning model.
-        scaler: The fitted scaler.
-        input_data (dict): A dictionary where keys are feature names and values are user inputs.
-        feature_names_ordered (list): The list of feature names in the order the model expects.
-    Returns:
-        tuple: (prediction_text, confidence_benign, confidence_malignant, top_features)
-    """
+def make_prediction(model, scaler, input_data_dict, feature_names_ordered):
+    # Default error return values (5 items)
+    error_prediction_text = "Prediction Error"
+    error_conf_benign = 0.0
+    error_conf_malignant = 0.0
+    error_top_features_list = []
+    error_feature_importance_dict = {}
+
     if model is None or scaler is None:
-        return "Error: Model not loaded.", 0, 0, []
+        st.error("Model or scaler not loaded for prediction.")
+        return "Error: Model not loaded.", error_conf_benign, error_conf_malignant, error_top_features_list, error_feature_importance_dict
 
     try:
-        # Ensure input_data is in the correct order
-        ordered_input_values = [float(input_data[feature]) for feature in feature_names_ordered]
+        # Ensure all input features are present and are convertible to float
+        ordered_input_values = []
+        for feature in feature_names_ordered:
+            if feature not in input_data_dict:
+                st.error(f"Missing input value for feature: {feature}")
+                return f"Error: Missing input for {feature}.", error_conf_benign, error_conf_malignant, error_top_features_list, error_feature_importance_dict
+            try:
+                ordered_input_values.append(float(input_data_dict[feature]))
+            except ValueError:
+                st.error(f"Invalid non-numeric input for feature: {feature}. Value: {input_data_dict[feature]}")
+                return f"Error: Invalid input for {feature}.", error_conf_benign, error_conf_malignant, error_top_features_list, error_feature_importance_dict
+        
         final_features = np.array([ordered_input_values])
-
         scaled_features = scaler.transform(final_features)
+        
         prediction_val = model.predict(scaled_features)
         probabilities = model.predict_proba(scaled_features)
 
@@ -72,18 +75,19 @@ def make_prediction(model, scaler, input_data, feature_names_ordered):
         confidence_benign = probabilities[0][1] * 100
         confidence_malignant = probabilities[0][0] * 100
 
-        top_features = []
+        top_features_list_calc = []
+        feature_importance_dict_calc = {}
         if hasattr(model, 'feature_importances_'):
             importances = model.feature_importances_
-            feature_importance_dict = dict(zip(feature_names_ordered, importances))
-            sorted_importances = sorted(feature_importance_dict.items(), key=lambda item: item[1], reverse=True)
-            top_features = sorted_importances[:5] # Top 5 features
+            feature_importance_dict_calc = dict(zip(feature_names_ordered, importances))
+            sorted_importances = sorted(feature_importance_dict_calc.items(), key=lambda item: item[1], reverse=True)
+            top_features_list_calc = sorted_importances[:5]
 
-        return result_text, confidence_benign, confidence_malignant, top_features
+        return result_text, confidence_benign, confidence_malignant, top_features_list_calc, feature_importance_dict_calc
 
-    except ValueError as ve:
-        st.error(f"Invalid input: Please ensure all fields are numbers. ({ve})")
-        return "Error in input.", 0, 0, []
+    except ValueError as ve: # This specifically catches float conversion errors if not caught above
+        st.error(f"Invalid input during processing: {ve}")
+        return "Error: Invalid input type.", error_conf_benign, error_conf_malignant, error_top_features_list, error_feature_importance_dict
     except Exception as e:
-        st.error(f"An error occurred during prediction: {e}")
-        return "Prediction error.", 0, 0, []
+        st.error(f"An unexpected error occurred during ML prediction: {e}")
+        return "ML Prediction error (unexpected).", error_conf_benign, error_conf_malignant, error_top_features_list, error_feature_importance_dict
