@@ -1,4 +1,4 @@
-# gemini_explainer.py
+
 import streamlit as st
 import google.generativeai as genai
 import json
