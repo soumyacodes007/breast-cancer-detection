@@ -1,12 +1,10 @@
-# chatbot_module.py
+
 import streamlit as st
 from typing import Dict, List, Any
 import json
 import google.generativeai as genai
 
-# --- Constants ---
-# Using a generally available and capable model.
-# Options: 'gemini-1.0-pro', 'gemini-1.5-flash-latest', 'gemini-1.5-pro-latest'
+
 GEMINI_MODEL_NAME = 'gemini-2.0-flash'
 
 class BreastCancerChatbot:

@@ -1,25 +1,25 @@
-# app.py
+
 import streamlit as st
 import pandas as pd
 from model_utils import load_model_and_scaler, get_feature_names, make_prediction
 from chatbot_module import initialize_chatbot_session, add_message_to_history, display_chat_messages
 from gemini_explainer import get_gemini_explanation_with_charts
 
-# --- Page Configuration ---
+
 st.set_page_config(
     page_title="Breast Cancer Predictor & AI Assistant",
     page_icon="🎀",
     layout="wide"
 )
 
-# --- Load ML Model, Scaler, and Feature Names ---
+#  Load ML Model-
 ml_model, scaler = load_model_and_scaler()
 feature_names = get_feature_names()
 
-# --- Initialize Chatbot and Session State ---
+
 initialize_chatbot_session() # Ensures chatbot and chat_messages exist in session_state
 
-# --- Main Application Layout (Input Fields + Chatbot) ---
+
 st.title("Breast Cancer Prediction & AI Assistant 🎀")
 st.markdown("""
 This application uses a Machine Learning model to predict if a breast tumor is benign or malignant.
